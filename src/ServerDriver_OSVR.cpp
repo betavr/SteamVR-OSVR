@@ -26,6 +26,8 @@
 #include "ServerDriver_OSVR.h"
 
 #include "OSVRTrackedDevice.h"      // for OSVRTrackedDevice
+#include "OSVRTrackedDeviceHandL.h" // for OSVRTrackedDeviceHandL
+#include "OSVRTrackedDeviceHandR.h" // for OSVRTrackedDeviceHandR
 #include "platform_fixes.h"         // strcasecmp
 #include "make_unique.h"            // for std::make_unique
 
@@ -43,26 +45,35 @@ vr::EVRInitError ServerDriver_OSVR::Init(vr::IDriverLog* driver_log, vr::IServer
 {
     logger_ = driver_log;
 
-    logger_->Log("ServerDriver_OSVR::Init() called.\n");
-    context_ = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.SteamVR");
+	logger_->Log("ServerDriver_OSVR::Init() called.\n");
+	logger_->Log("Razer Hydra support enabled\n");
+	context_ = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.SteamVR");
 
     const std::string display_description = context_->getStringParameter("/display");
     trackedDevices_.emplace_back(std::make_unique<OSVRTrackedDevice>(display_description, *(context_.get()), driver_host, logger_));
 
-    return vr::VRInitError_None;
+	const std::string left_hand_description = "left_hand_controller";
+	trackedHandL_.emplace_back(std::make_unique<OSVRTrackedDeviceHandL>(left_hand_description, *(context_.get()), driver_host, logger_));
+
+	const std::string right_hand_description = "right_hand_controller";
+	trackedHandR_.emplace_back(std::make_unique<OSVRTrackedDeviceHandR>(right_hand_description, *(context_.get()), driver_host, logger_));
+
+	return vr::VRInitError_None;
 }
 
 void ServerDriver_OSVR::Cleanup()
 {
-    trackedDevices_.clear();
-    context_.reset();
+	trackedDevices_.clear();
+	trackedHandL_.clear();
+	trackedHandR_.clear();
+	context_.reset();
 }
 
 uint32_t ServerDriver_OSVR::GetTrackedDeviceCount()
 {
-    std::string msg = "ServerDriver_OSVR::GetTrackedDeviceCount(): Detected " + std::to_string(trackedDevices_.size()) + " tracked devices.\n";
+    std::string msg = "ServerDriver_OSVR::GetTrackedDeviceCount(): Detected " + std::to_string(trackedDevices_.size() + trackedHandL_.size() + trackedHandR_.size()) + " tracked devices.\n";
     logger_->Log(msg.c_str());
-    return trackedDevices_.size();
+    return trackedDevices_.size() + trackedHandL_.size() + trackedHandR_.size();
 }
 
 vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::GetTrackedDeviceDriver(uint32_t index, const char* interface_version)
@@ -73,16 +84,41 @@ vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::GetTrackedDeviceDriver(uint32
         return NULL;
     }
 
-    if (index >= trackedDevices_.size()) {
+	std::string msg;
+
+	switch (index) {
+		case 0:
+			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked hmd .\n";
+			logger_->Log(msg.c_str());
+			return trackedDevices_[0].get();
+		case 1:
+			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked left hand .\n";
+			logger_->Log(msg.c_str());
+			return trackedHandL_[0].get();
+		case 2:
+			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked right hand .\n";
+			logger_->Log(msg.c_str());
+			return trackedHandR_[0].get();
+		default:
+			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): ERROR: Index " + std::to_string(index) + " is out of range .\n";
+			logger_->Log(msg.c_str());
+			break;
+	}
+
+	/*
+	if (index >= trackedDevices_.size()) {
         std::string msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): ERROR: Index " + std::to_string(index) + " is out of range [0.." + std::to_string(trackedDevices_.size()) + "].\n";
         logger_->Log(msg.c_str());
         return NULL;
-    }
+	}
+	else {
+		std::string msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked device " + std::to_string(index) + ".\n";
+		logger_->Log(msg.c_str());
+		return trackedDevices_[index].get();
+	}
+	*/
 
-    std::string msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked device " + std::to_string(index) + ".\n";
-    logger_->Log(msg.c_str());
-
-    return trackedDevices_[index].get();
+	return NULL;
 }
 
 vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::FindTrackedDeviceDriver(const char* id, const char* interface_version)
@@ -101,7 +137,23 @@ vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::FindTrackedDeviceDriver(const
         }
     }
 
-    std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): ERROR: Failed to locate device named '" + std::string(id) + "'.\n";
+	for (auto& tracked_device : trackedHandL_) {
+		if (0 == std::strcmp(id, tracked_device->GetId())) {
+			std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): Returning tracked device " + std::string(id) + ".\n";
+			logger_->Log(msg.c_str());
+			return tracked_device.get();
+		}
+	}
+
+	for (auto& tracked_device : trackedHandR_) {
+		if (0 == std::strcmp(id, tracked_device->GetId())) {
+			std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): Returning tracked device " + std::string(id) + ".\n";
+			logger_->Log(msg.c_str());
+			return tracked_device.get();
+		}
+	}
+
+	std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): ERROR: Failed to locate device named '" + std::string(id) + "'.\n";
     logger_->Log(msg.c_str());
 
     return NULL;

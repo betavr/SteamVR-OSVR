@@ -260,16 +260,21 @@ bool OSVRTrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty 
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDevice::GetBoolTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetBoolTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     switch (prop) {
-    case vr::Prop_WillDriftInYaw_Bool: // TODO
-        if (error)
-            *error = vr::TrackedProp_ValueNotProvidedByDevice;
-        return default_value;
-        break;
-    case vr::Prop_ReportsTimeSinceVSync_Bool: // TODO
+	case vr::Prop_ContainsProximitySensor_Bool:
+		if (error)
+			*error = vr::TrackedProp_Success;
+		return 0;
+		break;
+	case vr::Prop_WillDriftInYaw_Bool: // TODO
+		if (error)
+			*error = vr::TrackedProp_ValueNotProvidedByDevice;
+		return default_value;
+		break;
+	case vr::Prop_ReportsTimeSinceVSync_Bool: // TODO
         if (error)
             *error = vr::TrackedProp_ValueNotProvidedByDevice;
         return default_value;
@@ -313,8 +318,8 @@ float OSVRTrackedDevice::GetFloatTrackedDeviceProperty(vr::ETrackedDevicePropert
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDevice::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     switch (prop) {
     case vr::Prop_SecondsFromVsyncToPhotons_Float: // TODO
@@ -391,8 +396,8 @@ int32_t OSVRTrackedDevice::GetInt32TrackedDeviceProperty(vr::ETrackedDevicePrope
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDevice::GetInt32TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetInt32TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     switch (prop) {
     case vr::Prop_DeviceClass_Int32:
@@ -453,22 +458,22 @@ uint64_t OSVRTrackedDevice::GetUint64TrackedDeviceProperty(vr::ETrackedDevicePro
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDevice::GetUint64TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetUint64TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     switch (prop) {
-    case vr::Prop_CurrentUniverseId_Uint64: // TODO
+    case vr::Prop_CurrentUniverseId_Uint64:
         if (error)
-            *error = vr::TrackedProp_ValueNotProvidedByDevice;
-        return default_value;
-    case vr::Prop_PreviousUniverseId_Uint64: // TODO
+            *error = vr::TrackedProp_Success;
+		return vr::ETrackingUniverseOrigin::TrackingUniverseStanding;
+    case vr::Prop_PreviousUniverseId_Uint64:
         if (error)
-            *error = vr::TrackedProp_ValueNotProvidedByDevice;
-        return default_value;
-    case vr::Prop_SupportedButtons_Uint64: // TODO
+			*error = vr::TrackedProp_Success;
+		return vr::ETrackingUniverseOrigin::TrackingUniverseStanding;
+	case vr::Prop_SupportedButtons_Uint64:
         if (error)
-            *error = vr::TrackedProp_ValueNotProvidedByDevice;
-        return default_value;
+            *error = vr::TrackedProp_Success;
+		return 0xFFFFFFFF;
     }
 
 #include "ignore-warning/pop"
@@ -505,8 +510,8 @@ vr::HmdMatrix34_t OSVRTrackedDevice::GetMatrix34TrackedDeviceProperty(vr::ETrack
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDevice::GetMatrix34TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetMatrix34TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     switch (prop) {
     case vr::Prop_StatusDisplayTransform_Matrix34: // TODO
@@ -543,8 +548,8 @@ uint32_t OSVRTrackedDevice::GetStringTrackedDeviceProperty(vr::ETrackedDevicePro
         return default_value;
     }
 
-    const std::string msg = "OSVRTrackedDevice::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+    //const std::string msg = "OSVRTrackedDevice::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+    //logger_->Log(msg.c_str());
 
     std::string sValue = GetStringTrackedDeviceProperty(prop, pError);
     if (*pError == vr::TrackedProp_Success) {
@@ -655,6 +660,7 @@ void OSVRTrackedDevice::HmdTrackerCallback(void* userdata, const OSVR_TimeValue*
     pose.poseIsValid = true;
     pose.willDriftInYaw = true;
     pose.shouldApplyHeadModel = true;
+	pose.deviceIsConnected = true;
 
     self->pose_ = pose;
     self->driver_host_->TrackedDevicePoseUpdated(0, self->pose_); /// @fixme figure out ID correctly, don't hardcode to zero

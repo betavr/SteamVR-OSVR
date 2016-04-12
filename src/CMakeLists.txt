@@ -38,6 +38,10 @@ add_library(driver_osvr
 	osvr_dll_export.h
 	OSVRTrackedDevice.cpp
 	OSVRTrackedDevice.h
+	OSVRTrackedDeviceHandL.cpp
+	OSVRTrackedDeviceHandL.h
+	OSVRTrackedDeviceHandR.cpp
+	OSVRTrackedDeviceHandR.h
 	platform_fixes.h
 	ServerDriver_OSVR.cpp
 	ServerDriver_OSVR.h

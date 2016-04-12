@@ -267,12 +267,12 @@ bool OSVRTrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty 
 	case vr::Prop_ContainsProximitySensor_Bool:
 		if (error)
 			*error = vr::TrackedProp_Success;
-		return 0;
+		return false;
 		break;
 	case vr::Prop_WillDriftInYaw_Bool: // TODO
 		if (error)
-			*error = vr::TrackedProp_ValueNotProvidedByDevice;
-		return default_value;
+			*error = vr::TrackedProp_Success;
+		return true;
 		break;
 	case vr::Prop_ReportsTimeSinceVSync_Bool: // TODO
         if (error)
@@ -281,8 +281,8 @@ bool OSVRTrackedDevice::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProperty 
         break;
     case vr::Prop_IsOnDesktop_Bool: // TODO
         if (error)
-            *error = vr::TrackedProp_ValueNotProvidedByDevice;
-        return default_value;
+            *error = vr::TrackedProp_Success;
+        return false;
         break;
     }
 

@@ -158,6 +158,7 @@ private:
      * from the tracker.
      */
 	static void HandRTrackerCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_PoseReport* report);
+
 	static void ButtonMiddleCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
 	static void Button1Callback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
 	static void Button2Callback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
@@ -165,6 +166,10 @@ private:
 	static void Button4Callback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
 	static void ButtonBumperCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
 	static void ButtonJoystickButtonCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report);
+
+	static void AnalogJoystickXCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report);
+	static void AnalogJoystickYCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report);
+	static void AnalogTriggerCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report);
 
     const std::string m_DisplayDescription;
     osvr::clientkit::ClientContext& m_Context;
@@ -193,9 +198,16 @@ private:
 	vr::DriverPose_t pose_;
     vr::ETrackedDeviceClass deviceClass_;
 	vr::VRControllerState_t state_;
+	vr::IVRSettings *settings_;
+
+	uint32_t device_id_;
+	float rightHandVecWorldFromDriverTranslationX_;
+	float rightHandVecWorldFromDriverTranslationY_;
+	float rightHandVecWorldFromDriverTranslationZ_;
 
 	uint32_t packetNumCounter;
 
+	const bool logDebugProps = false;
 };
 
 #endif // INCLUDED_OSVRTrackedDeviceHandR_h_GUID_128E3B29_F5FC_4221_9B38_14E3F402E643

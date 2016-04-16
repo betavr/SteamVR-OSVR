@@ -55,7 +55,7 @@ bool ClientDriver_OSVR::BIsHmdPresent(const char* user_config_dir)
 {
     // Optimistically return true. We'll have a chance to say whether there's
     // actually an HMD later.
-    return true;
+    return false;
 }
 
 vr::EVRInitError ClientDriver_OSVR::SetDisplayId(const char* display_id)

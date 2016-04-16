@@ -61,7 +61,7 @@ OSVRTrackedDeviceHandL::~OSVRTrackedDeviceHandL()
 
 vr::EVRInitError OSVRTrackedDeviceHandL::Activate(uint32_t object_id)
 {
-    const std::time_t waitTime = 5; // wait up to 5 seconds for init
+    const std::time_t waitTime = 1; // wait up to 5 seconds for init
 
     // Register tracker callback
     if (m_TrackerInterface.notEmpty()) {
@@ -79,7 +79,25 @@ vr::EVRInitError OSVRTrackedDeviceHandL::Activate(uint32_t object_id)
             return vr::VRInitError_Driver_Failed;
         }
     }
-	
+
+	// Load config from steamvr.vrsettings
+	settings_ = driver_host_->GetSettings(vr::IVRSettings_Version);
+
+	// Check enabled status
+	if (driver_host_) {
+		if (settings_) {
+			if (!settings_->GetBool("osvr", "leftHandEnable", true)) {
+				logger_->Log("Left hand controller disabled!\n");
+				return vr::VRInitError_Driver_Failed;
+			}
+		}
+	}
+
+	// init config values
+	device_id_ = settings_->GetInt32("osvr", "leftHandDeviceId", 3);
+	leftHandVecWorldFromDriverTranslationX_ = settings_->GetFloat("osvr", "leftHandVecWorldFromDriverTranslationX", 0);
+	leftHandVecWorldFromDriverTranslationY_ = settings_->GetFloat("osvr", "leftHandVecWorldFromDriverTranslationY", -0.5);
+	leftHandVecWorldFromDriverTranslationZ_ = settings_->GetFloat("osvr", "leftHandVecWorldFromDriverTranslationZ", -1.1);
 
     // Register tracker callback
     m_TrackerInterface = m_Context.getInterface("/controller/left");
@@ -94,9 +112,6 @@ vr::EVRInitError OSVRTrackedDeviceHandL::Activate(uint32_t object_id)
 	state_ = { 0, 0, 0, rAxis[1] };
 
 	// register hydra button callbacks
-	m_ButtonInterfaceMiddle = m_Context.getInterface("/controller/left/middle");
-	m_ButtonInterfaceMiddle.registerCallback(&OSVRTrackedDeviceHandL::ButtonMiddleCallback, this);
-
 	m_ButtonInterface1 = m_Context.getInterface("/controller/left/1");
 	m_ButtonInterface1.registerCallback(&OSVRTrackedDeviceHandL::Button1Callback, this);
 
@@ -112,11 +127,22 @@ vr::EVRInitError OSVRTrackedDeviceHandL::Activate(uint32_t object_id)
 	m_ButtonInterfaceMiddle = m_Context.getInterface("/controller/left/middle");
 	m_ButtonInterfaceMiddle.registerCallback(&OSVRTrackedDeviceHandL::ButtonMiddleCallback, this);
 
-	m_ButtonInterfaceMiddle = m_Context.getInterface("/controller/left/bumper");
-	m_ButtonInterfaceMiddle.registerCallback(&OSVRTrackedDeviceHandL::ButtonBumperCallback, this);
+	m_ButtonInterfaceBumper = m_Context.getInterface("/controller/left/bumper");
+	m_ButtonInterfaceBumper.registerCallback(&OSVRTrackedDeviceHandL::ButtonBumperCallback, this);
 
-	m_ButtonInterfaceMiddle = m_Context.getInterface("/controller/left/joystick/button");
-	m_ButtonInterfaceMiddle.registerCallback(&OSVRTrackedDeviceHandL::ButtonJoystickButtonCallback, this);
+	m_ButtonInterfaceJoystickButton = m_Context.getInterface("/controller/left/joystick/button");
+	m_ButtonInterfaceJoystickButton.registerCallback(&OSVRTrackedDeviceHandL::ButtonJoystickButtonCallback, this);
+
+	// register hydra analog callbacks
+	m_AnalogInterfaceJoystickX = m_Context.getInterface("/controller/left/joystick/x");
+	m_AnalogInterfaceJoystickX.registerCallback(&OSVRTrackedDeviceHandL::AnalogJoystickXCallback, this);
+
+	m_AnalogInterfaceJoystickY = m_Context.getInterface("/controller/left/joystick/y");
+	m_AnalogInterfaceJoystickY.registerCallback(&OSVRTrackedDeviceHandL::AnalogJoystickYCallback, this);
+
+	m_AnalogInterfaceTrigger = m_Context.getInterface("/controller/left/trigger");
+	m_AnalogInterfaceTrigger.registerCallback(&OSVRTrackedDeviceHandL::AnalogTriggerCallback, this);
+
 
 	return vr::VRInitError_None;
 }
@@ -181,8 +207,10 @@ bool OSVRTrackedDeviceHandL::GetBoolTrackedDeviceProperty(vr::ETrackedDeviceProp
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    //const std::string msg = "OSVRTrackedDeviceHandL::GetBoolTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    //logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetBoolTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     switch (prop) {
     case vr::Prop_WillDriftInYaw_Bool:
@@ -267,8 +295,10 @@ float OSVRTrackedDeviceHandL::GetFloatTrackedDeviceProperty(vr::ETrackedDevicePr
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDeviceHandL::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     switch (prop) {
     case vr::Prop_SecondsFromVsyncToPhotons_Float: // TODO
@@ -345,34 +375,36 @@ int32_t OSVRTrackedDeviceHandL::GetInt32TrackedDeviceProperty(vr::ETrackedDevice
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDeviceHandL::GetInt32TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetInt32TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     switch (prop) {
     case vr::Prop_DeviceClass_Int32:
         if (error)
             *error = vr::TrackedProp_Success;
         return deviceClass_;
-    case vr::Prop_Axis0Type_Int32: // TODO
+	case vr::Prop_Axis0Type_Int32: // TODO
 		if (error)
 			*error = vr::TrackedProp_Success;
 		return vr::EVRControllerAxisType::k_eControllerAxis_Joystick;
-    case vr::Prop_Axis1Type_Int32: // TODO
-        if (error)
+	case vr::Prop_Axis1Type_Int32: // TODO
+		if (error)
 			*error = vr::TrackedProp_Success;
-		return vr::EVRControllerAxisType::k_eControllerAxis_Joystick;
-    case vr::Prop_Axis2Type_Int32: // TODO
-        if (error)
+		return vr::EVRControllerAxisType::k_eControllerAxis_Trigger;
+	case vr::Prop_Axis2Type_Int32: // TODO
+		if (error)
 			*error = vr::TrackedProp_Success;
-		return vr::EVRControllerAxisType::k_eControllerAxis_Joystick;
+		return vr::EVRControllerAxisType::k_eControllerAxis_None;
 	case vr::Prop_Axis3Type_Int32: // TODO
-        if (error)
+		if (error)
 			*error = vr::TrackedProp_Success;
-		return vr::EVRControllerAxisType::k_eControllerAxis_Joystick;
+		return vr::EVRControllerAxisType::k_eControllerAxis_None;
 	case vr::Prop_Axis4Type_Int32: // TODO
-        if (error)
+		if (error)
 			*error = vr::TrackedProp_Success;
-		return vr::EVRControllerAxisType::k_eControllerAxis_Joystick;
+		return vr::EVRControllerAxisType::k_eControllerAxis_None;
 	}
 
 #include "ignore-warning/pop"
@@ -407,8 +439,10 @@ uint64_t OSVRTrackedDeviceHandL::GetUint64TrackedDeviceProperty(vr::ETrackedDevi
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDeviceHandL::GetUint64TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetUint64TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     switch (prop) {
 	case vr::Prop_SupportedButtons_Uint64: // TODO
@@ -457,8 +491,10 @@ vr::HmdMatrix34_t OSVRTrackedDeviceHandL::GetMatrix34TrackedDeviceProperty(vr::E
 #include "ignore-warning/push"
 #include "ignore-warning/switch-enum"
 
-    const std::string msg = "OSVRTrackedDeviceHandL::GetMatrix34TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetMatrix34TrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     switch (prop) {
     case vr::Prop_StatusDisplayTransform_Matrix34: // TODO
@@ -495,8 +531,10 @@ uint32_t OSVRTrackedDeviceHandL::GetStringTrackedDeviceProperty(vr::ETrackedDevi
         return default_value;
     }
 
-    const std::string msg = "OSVRTrackedDeviceHandL::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
-    logger_->Log(msg.c_str());
+	if (logDebugProps) {
+		const std::string msg = "OSVRTrackedDeviceHandL::GetFloatTrackedDeviceProperty(): Requested property: " + std::to_string(prop) + "\n";
+		logger_->Log(msg.c_str());
+	}
 
     std::string sValue = GetStringTrackedDeviceProperty(prop, pError);
     if (*pError == vr::TrackedProp_Success) {
@@ -583,11 +621,10 @@ void OSVRTrackedDeviceHandL::HandLTrackerCallback(void* userdata, const OSVR_Tim
     vr::DriverPose_t pose;
     pose.poseTimeOffset = 0; // close enough
 
-    Eigen::Vector3d::Map(pose.vecWorldFromDriverTranslation) = Eigen::Vector3d::Zero();
-    Eigen::Vector3d::Map(pose.vecDriverFromHeadTranslation) = Eigen::Vector3d::Zero();
+	Eigen::Vector3d::Map(pose.vecWorldFromDriverTranslation) = Eigen::Vector3d(self->leftHandVecWorldFromDriverTranslationX_, self->leftHandVecWorldFromDriverTranslationY_, self->leftHandVecWorldFromDriverTranslationZ_);
+	Eigen::Vector3d::Map(pose.vecDriverFromHeadTranslation) = Eigen::Vector3d::Zero();
 
     map(pose.qWorldFromDriverRotation) = Eigen::Quaterniond::Identity();
-
     map(pose.qDriverFromHeadRotation) = Eigen::Quaterniond::Identity();
 
     // Position
@@ -611,7 +648,7 @@ void OSVRTrackedDeviceHandL::HandLTrackerCallback(void* userdata, const OSVR_Tim
 	pose.deviceIsConnected = true;
 
     self->pose_ = pose;
-    self->driver_host_->TrackedDevicePoseUpdated(1, self->pose_); /// @fixme figure out ID correctly, don't hardcode to zero
+    self->driver_host_->TrackedDevicePoseUpdated(self->device_id_, self->pose_); /// @fixme figure out ID correctly, don't hardcode to zero
 }
 
 void OSVRTrackedDeviceHandL::Button1Callback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report)
@@ -623,13 +660,13 @@ void OSVRTrackedDeviceHandL::Button1Callback(void* userdata, const OSVR_TimeValu
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Trigger);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Trigger);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
 		break;
 	}
 }
@@ -643,13 +680,13 @@ void OSVRTrackedDeviceHandL::Button2Callback(void * userdata, const OSVR_TimeVal
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Dashboard_Back);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_Dashboard_Back, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_Dashboard_Back, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Dashboard_Back);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_Dashboard_Back, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_Dashboard_Back, 0);
 		break;
 	}
 }
@@ -663,13 +700,13 @@ void OSVRTrackedDeviceHandL::Button3Callback(void * userdata, const OSVR_TimeVal
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_ApplicationMenu);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_ApplicationMenu, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_ApplicationMenu, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_ApplicationMenu);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_ApplicationMenu, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_ApplicationMenu, 0);
 		break;
 	}
 }
@@ -683,13 +720,13 @@ void OSVRTrackedDeviceHandL::Button4Callback(void * userdata, const OSVR_TimeVal
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_A);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_A, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_A, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_A);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_A, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_A, 0);
 		break;
 	}
 }
@@ -703,13 +740,13 @@ void OSVRTrackedDeviceHandL::ButtonBumperCallback(void * userdata, const OSVR_Ti
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_Grip, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_Grip, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_Grip);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_Grip, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_Grip, 0);
 		break;
 	}
 }
@@ -723,13 +760,13 @@ void OSVRTrackedDeviceHandL::ButtonJoystickButtonCallback(void * userdata, const
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Touchpad);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Touchpad);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
 		break;
 	}
 }
@@ -743,15 +780,46 @@ void OSVRTrackedDeviceHandL::ButtonMiddleCallback(void* userdata, const OSVR_Tim
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_System);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(1, vr::EVRButtonId::k_EButton_System, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_System, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
 		self->state_.ulButtonPressed = self->state_.ulButtonPressed | vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_System);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(1, vr::EVRButtonId::k_EButton_System, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_System, 0);
 		break;
 	}
+}
+
+void OSVRTrackedDeviceHandL::AnalogJoystickXCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report)
+{
+	auto* self = static_cast<OSVRTrackedDeviceHandL*>(userdata);
+	self->state_.rAxis[0].x = report->state;
+	self->driver_host_->TrackedDeviceAxisUpdated(self->device_id_, 0, self->state_.rAxis[0]);
+
+	//const std::string msg = "analog x state: " + std::to_string(report->state) + "\n";
+	//self->logger_->Log(msg.c_str());
+}
+
+void OSVRTrackedDeviceHandL::AnalogJoystickYCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report)
+{
+	auto* self = static_cast<OSVRTrackedDeviceHandL*>(userdata);
+	self->state_.rAxis[0].y = report->state;
+	self->driver_host_->TrackedDeviceAxisUpdated(self->device_id_, 0, self->state_.rAxis[0]);
+
+	//const std::string msg = "analog y state: " + std::to_string(report->state) + "\n";
+	//self->logger_->Log(msg.c_str());
+}
+
+void OSVRTrackedDeviceHandL::AnalogTriggerCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_AnalogReport* report)
+{
+	auto* self = static_cast<OSVRTrackedDeviceHandL*>(userdata);
+	self->state_.rAxis[1].x = report->state;
+	self->state_.rAxis[1].y = 0;
+	self->driver_host_->TrackedDeviceAxisUpdated(self->device_id_, 1, self->state_.rAxis[1]);
+
+	//const std::string msg = "analog trigger state: " + std::to_string(report->state) + "\n";
+	//self->logger_->Log(msg.c_str());
 }
 
 const char* OSVRTrackedDeviceHandL::GetId()

@@ -26,7 +26,6 @@
 #define INCLUDED_ServerDriver_OSVR_h_GUID_136B1359_C29D_4198_9CA0_1C223CC83B84
 
 // Internal Includes
-#include "OSVRTrackedDevice.h"          // for OSVRTrackedDevice
 #include "OSVRTrackedDeviceHandL.h"     // for OSVRTrackedDeviceHandL
 #include "OSVRTrackedDeviceHandR.h"     // for OSVRTrackedDeviceHandL
 #include "osvr_compiler_detection.h"    // for OSVR_OVERRIDE
@@ -116,7 +115,6 @@ public:
     virtual void LeaveStandby() OSVR_OVERRIDE;
 
 private:
-	std::vector<std::unique_ptr<OSVRTrackedDevice>> trackedDevices_;
 	std::vector<std::unique_ptr<OSVRTrackedDeviceHandL>> trackedHandL_;
 	std::vector<std::unique_ptr<OSVRTrackedDeviceHandR>> trackedHandR_;
 	std::unique_ptr<osvr::clientkit::ClientContext> context_;

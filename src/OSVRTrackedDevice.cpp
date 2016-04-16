@@ -465,11 +465,11 @@ uint64_t OSVRTrackedDevice::GetUint64TrackedDeviceProperty(vr::ETrackedDevicePro
     case vr::Prop_CurrentUniverseId_Uint64:
         if (error)
             *error = vr::TrackedProp_Success;
-		return vr::ETrackingUniverseOrigin::TrackingUniverseStanding;
+		return vr::ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated;
     case vr::Prop_PreviousUniverseId_Uint64:
         if (error)
 			*error = vr::TrackedProp_Success;
-		return vr::ETrackingUniverseOrigin::TrackingUniverseStanding;
+		return vr::ETrackingUniverseOrigin::TrackingUniverseRawAndUncalibrated;
 	case vr::Prop_SupportedButtons_Uint64:
         if (error)
             *error = vr::TrackedProp_Success;

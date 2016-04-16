@@ -25,7 +25,6 @@
 // Internal Includes
 #include "ServerDriver_OSVR.h"
 
-#include "OSVRTrackedDevice.h"      // for OSVRTrackedDevice
 #include "OSVRTrackedDeviceHandL.h" // for OSVRTrackedDeviceHandL
 #include "OSVRTrackedDeviceHandR.h" // for OSVRTrackedDeviceHandR
 #include "platform_fixes.h"         // strcasecmp
@@ -49,8 +48,8 @@ vr::EVRInitError ServerDriver_OSVR::Init(vr::IDriverLog* driver_log, vr::IServer
 	logger_->Log("Razer Hydra support enabled\n");
 	context_ = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.SteamVR");
 
-    const std::string display_description = context_->getStringParameter("/display");
-    trackedDevices_.emplace_back(std::make_unique<OSVRTrackedDevice>(display_description, *(context_.get()), driver_host, logger_));
+    //const std::string display_description = context_->getStringParameter("/display");
+    //trackedDevices_.emplace_back(std::make_unique<OSVRTrackedDevice>(display_description, *(context_.get()), driver_host, logger_));
 
 	const std::string left_hand_description = "left_hand_controller";
 	trackedHandL_.emplace_back(std::make_unique<OSVRTrackedDeviceHandL>(left_hand_description, *(context_.get()), driver_host, logger_));
@@ -63,7 +62,6 @@ vr::EVRInitError ServerDriver_OSVR::Init(vr::IDriverLog* driver_log, vr::IServer
 
 void ServerDriver_OSVR::Cleanup()
 {
-	trackedDevices_.clear();
 	trackedHandL_.clear();
 	trackedHandR_.clear();
 	context_.reset();
@@ -71,31 +69,35 @@ void ServerDriver_OSVR::Cleanup()
 
 uint32_t ServerDriver_OSVR::GetTrackedDeviceCount()
 {
-    std::string msg = "ServerDriver_OSVR::GetTrackedDeviceCount(): Detected " + std::to_string(trackedDevices_.size() + trackedHandL_.size() + trackedHandR_.size()) + " tracked devices.\n";
+    std::string msg = "ServerDriver_OSVR::GetTrackedDeviceCount(): Detected " + std::to_string(trackedHandL_.size() + trackedHandR_.size()) + " tracked devices.\n";
     logger_->Log(msg.c_str());
-    return trackedDevices_.size() + trackedHandL_.size() + trackedHandR_.size();
+    return trackedHandL_.size() + trackedHandR_.size();
 }
 
 vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::GetTrackedDeviceDriver(uint32_t index, const char* interface_version)
 {
-    if (0 != strcasecmp(interface_version, vr::ITrackedDeviceServerDriver_Version)) {
+	std::string msg;
+
+	msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): index " + std::to_string(index) + " requested.\n";
+	logger_->Log(msg.c_str());
+	
+	if (0 != strcasecmp(interface_version, vr::ITrackedDeviceServerDriver_Version)) {
         std::string msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): ERROR: Incompatible SteamVR version!\n";
         logger_->Log(msg.c_str());
         return NULL;
     }
 
-	std::string msg;
 
 	switch (index) {
-		case 0:
-			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked hmd .\n";
-			logger_->Log(msg.c_str());
-			return trackedDevices_[0].get();
+		//case 0:
+			//msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked hmd .\n";
+			//logger_->Log(msg.c_str());
+			//return NULL;
 		case 1:
 			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked left hand .\n";
 			logger_->Log(msg.c_str());
 			return trackedHandL_[0].get();
-		case 2:
+		case 0:
 			msg = "ServerDriver_OSVR::GetTrackedDeviceDriver(): Returning tracked right hand .\n";
 			logger_->Log(msg.c_str());
 			return trackedHandR_[0].get();
@@ -127,14 +129,6 @@ vr::ITrackedDeviceServerDriver* ServerDriver_OSVR::FindTrackedDeviceDriver(const
         std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): ERROR: Incompatible SteamVR version!\n";
         logger_->Log(msg.c_str());
         return NULL;
-    }
-
-    for (auto& tracked_device : trackedDevices_) {
-        if (0 == std::strcmp(id, tracked_device->GetId())) {
-            std::string msg = "ServerDriver_OSVR::FindTrackedDeviceDriver(): Returning tracked device " + std::string(id) + ".\n";
-            logger_->Log(msg.c_str());
-            return tracked_device.get();
-        }
     }
 
 	for (auto& tracked_device : trackedHandL_) {

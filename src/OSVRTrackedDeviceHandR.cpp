@@ -769,12 +769,13 @@ void OSVRTrackedDeviceHandR::ButtonJoystickButtonCallback(void * userdata, const
 		self->state_.unPacketNum = self->packetNumCounter;
 		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
 		break;
+/*
 	default:
-
 		const std::string msg = "joy button state: " + std::to_string(report->state) + "\n";
 		self->logger_->Log(msg.c_str());
-
 	}
+*/
+
 }
 
 void OSVRTrackedDeviceHandR::ButtonMiddleCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_ButtonReport* report)

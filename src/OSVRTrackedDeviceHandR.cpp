@@ -101,7 +101,7 @@ vr::EVRInitError OSVRTrackedDeviceHandR::Activate(uint32_t object_id)
 	rightHandVecWorldFromDriverTranslationY_ = settings_->GetFloat("osvr", "rightHandVecWorldFromDriverTranslationY", -0.5);
 	rightHandVecWorldFromDriverTranslationZ_ = settings_->GetFloat("osvr", "rightHandVecWorldFromDriverTranslationZ", -1.1);
 
-	m_TrackerInterface = m_Context.getInterface("/controller/right");
+	m_TrackerInterface = m_Context.getInterface(handdevice);
 	m_TrackerInterface.registerCallback(&OSVRTrackedDeviceHandR::HandRTrackerCallback, this);
 
 	// init state
@@ -113,35 +113,35 @@ vr::EVRInitError OSVRTrackedDeviceHandR::Activate(uint32_t object_id)
 	state_.rAxis[1] = { 0, 0 };
 
 	// register hydra button callbacks
-	m_ButtonInterface1 = m_Context.getInterface("/controller/right/1");
+	m_ButtonInterface1 = m_Context.getInterface(buttondevice_SteamVR_Trigger);
 	m_ButtonInterface1.registerCallback(&OSVRTrackedDeviceHandR::Button1Callback, this);
 
-	m_ButtonInterface2 = m_Context.getInterface("/controller/right/2");
+	m_ButtonInterface2 = m_Context.getInterface(buttondevice_Dashboard_Back);
 	m_ButtonInterface2.registerCallback(&OSVRTrackedDeviceHandR::Button2Callback, this);
 
-	m_ButtonInterface3 = m_Context.getInterface("/controller/right/3");
+	m_ButtonInterface3 = m_Context.getInterface(buttondevice_ApplicationMenu);
 	m_ButtonInterface3.registerCallback(&OSVRTrackedDeviceHandR::Button3Callback, this);
 
-	m_ButtonInterface4 = m_Context.getInterface("/controller/right/4");
+	m_ButtonInterface4 = m_Context.getInterface(buttondevice_A);
 	m_ButtonInterface4.registerCallback(&OSVRTrackedDeviceHandR::Button4Callback, this);
 
-	m_ButtonInterfaceMiddle = m_Context.getInterface("/controller/right/middle");
+	m_ButtonInterfaceMiddle = m_Context.getInterface(buttondevice_System);
 	m_ButtonInterfaceMiddle.registerCallback(&OSVRTrackedDeviceHandR::ButtonMiddleCallback, this);
 
-	m_ButtonInterfaceBumper = m_Context.getInterface("/controller/right/bumper");
+	m_ButtonInterfaceBumper = m_Context.getInterface(buttondevice_Grip);
 	m_ButtonInterfaceBumper.registerCallback(&OSVRTrackedDeviceHandR::ButtonBumperCallback, this);
 
-	m_ButtonInterfaceJoystickButton = m_Context.getInterface("/controller/right/joystick/button");
+	m_ButtonInterfaceJoystickButton = m_Context.getInterface(buttondevice_SteamVR_Touchpad);
 	m_ButtonInterfaceJoystickButton.registerCallback(&OSVRTrackedDeviceHandR::ButtonJoystickButtonCallback, this);
 
 	// register hydra analog callbacks
-	m_AnalogInterfaceJoystickX = m_Context.getInterface("/controller/right/joystick/x");
+	m_AnalogInterfaceJoystickX = m_Context.getInterface(analogdevice_JoystickX);
 	m_AnalogInterfaceJoystickX.registerCallback(&OSVRTrackedDeviceHandR::AnalogJoystickXCallback, this);
 
-	m_AnalogInterfaceJoystickY = m_Context.getInterface("/controller/right/joystick/y");
+	m_AnalogInterfaceJoystickY = m_Context.getInterface(analogdevice_JoystickY);
 	m_AnalogInterfaceJoystickY.registerCallback(&OSVRTrackedDeviceHandR::AnalogJoystickYCallback, this);
 
-	m_AnalogInterfaceTrigger = m_Context.getInterface("/controller/right/trigger");
+	m_AnalogInterfaceTrigger = m_Context.getInterface(analogdevice_Trigger);
 	m_AnalogInterfaceTrigger.registerCallback(&OSVRTrackedDeviceHandR::AnalogTriggerCallback, this);
 
     return vr::VRInitError_None;

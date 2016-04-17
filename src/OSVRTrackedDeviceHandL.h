@@ -200,6 +200,18 @@ private:
 	float leftHandVecWorldFromDriverTranslationY_;
 	float leftHandVecWorldFromDriverTranslationZ_;
 
+	char * handdevice = "/controller/left";
+	char * buttondevice_SteamVR_Trigger = "/controller/left/1";
+	char * buttondevice_Dashboard_Back = "/controller/left/2";
+	char * buttondevice_ApplicationMenu = "/controller/left/3";
+	char * buttondevice_A  = "/controller/left/4";
+	char * buttondevice_Grip = "/controller/left/bumper"; 
+	char * buttondevice_SteamVR_Touchpad = "/controller/left/joystick/button"; 
+	char * buttondevice_System = "/controller/left/middle";
+	char * analogdevice_JoystickX = "/controller/left/joystick/x";
+	char * analogdevice_JoystickY = "/controller/left/joystick/y";
+	char * analogdevice_Trigger = "/controller/left/trigger";
+
 	uint32_t packetNumCounter;
 
 	const bool logDebugProps = false;

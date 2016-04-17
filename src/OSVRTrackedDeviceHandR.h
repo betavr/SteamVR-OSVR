@@ -190,11 +190,6 @@ private:
 	osvr::clientkit::Interface m_AnalogInterfaceJoystickY;
 	osvr::clientkit::Interface m_AnalogInterfaceTrigger;
 
-	enum OSVRHydraButtonPaths
-	{
-		TrackedProp_NotYetAvailable = 9, // The property value isn't known yet, but is expected soon. Call again later.
-	};
-
 	vr::DriverPose_t pose_;
     vr::ETrackedDeviceClass deviceClass_;
 	vr::VRControllerState_t state_;
@@ -204,6 +199,18 @@ private:
 	float rightHandVecWorldFromDriverTranslationX_;
 	float rightHandVecWorldFromDriverTranslationY_;
 	float rightHandVecWorldFromDriverTranslationZ_;
+
+	char * handdevice = "/controller/right";
+	char * buttondevice_SteamVR_Trigger = "/controller/right/1";
+	char * buttondevice_Dashboard_Back = "/controller/right/2";
+	char * buttondevice_ApplicationMenu = "/controller/right/3";
+	char * buttondevice_A = "/controller/right/4";
+	char * buttondevice_Grip = "/controller/right/bumper";
+	char * buttondevice_SteamVR_Touchpad = "/controller/right/joystick/button";
+	char * buttondevice_System = "/controller/right/middle";
+	char * analogdevice_JoystickX = "/controller/right/joystick/x";
+	char * analogdevice_JoystickY = "/controller/right/joystick/y";
+	char * analogdevice_Trigger = "/controller/right/trigger";
 
 	uint32_t packetNumCounter;
 

@@ -659,15 +659,15 @@ void OSVRTrackedDeviceHandR::Button1Callback(void* userdata, const OSVR_TimeValu
 	switch (report->state) {
 	case OSVR_BUTTON_PRESSED:
 		self->packetNumCounter++;
-		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Trigger);
+		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Touchpad);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+		self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
 		break;
 	case OSVR_BUTTON_NOT_PRESSED:
 		self->packetNumCounter++;
-		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Trigger);
+		self->state_.ulButtonPressed |= vr::ButtonMaskFromId(vr::EVRButtonId::k_EButton_SteamVR_Touchpad);
 		self->state_.unPacketNum = self->packetNumCounter;
-		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+		self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Touchpad, 0);
 		break;
 	}
 }

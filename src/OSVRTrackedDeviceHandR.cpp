@@ -773,8 +773,8 @@ void OSVRTrackedDeviceHandR::ButtonJoystickButtonCallback(void * userdata, const
 	default:
 		const std::string msg = "joy button state: " + std::to_string(report->state) + "\n";
 		self->logger_->Log(msg.c_str());
-	}
 */
+	}
 
 }
 

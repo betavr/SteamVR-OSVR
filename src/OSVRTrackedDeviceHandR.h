@@ -212,6 +212,8 @@ private:
 	char * analogdevice_JoystickY = "/controller/right/joystick/y";
 	char * analogdevice_Trigger = "/controller/right/trigger";
 
+	bool trigger_pressed_ = false;
+
 	uint32_t packetNumCounter;
 
 	const bool logDebugProps = false;

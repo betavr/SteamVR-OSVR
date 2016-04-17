@@ -818,6 +818,19 @@ void OSVRTrackedDeviceHandL::AnalogTriggerCallback(void* userdata, const OSVR_Ti
 	self->state_.rAxis[1].y = 0;
 	self->driver_host_->TrackedDeviceAxisUpdated(self->device_id_, 1, self->state_.rAxis[1]);
 
+	if (self->trigger_pressed_) {
+		if (self->state_.rAxis[1].x < 0.90) {
+			self->driver_host_->TrackedDeviceButtonUnpressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+			self->trigger_pressed_ = false;
+		}
+	} 
+	else {
+		if (self->state_.rAxis[1].x > 0.90) {
+			self->driver_host_->TrackedDeviceButtonPressed(self->device_id_, vr::EVRButtonId::k_EButton_SteamVR_Trigger, 0);
+			self->trigger_pressed_ = true;
+		}
+	}
+
 	//const std::string msg = "analog trigger state: " + std::to_string(report->state) + "\n";
 	//self->logger_->Log(msg.c_str());
 }

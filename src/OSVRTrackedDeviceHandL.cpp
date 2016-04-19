@@ -111,6 +111,8 @@ vr::EVRInitError OSVRTrackedDeviceHandL::Activate(uint32_t object_id)
 	vr::VRControllerAxis_t rAxis[1] = { .0f, .0f };
 	state_ = { 0, 0, 0, rAxis[1] };
 
+	last_pose_.poseIsValid = false;
+
 	// register hydra button callbacks
 	m_ButtonInterface1 = m_Context.getInterface(buttondevice_SteamVR_Trigger);
 	m_ButtonInterface1.registerCallback(&OSVRTrackedDeviceHandL::Button1Callback, this);
@@ -630,9 +632,28 @@ void OSVRTrackedDeviceHandL::HandLTrackerCallback(void* userdata, const OSVR_Tim
     // Position
     Eigen::Vector3d::Map(pose.vecPosition) = osvr::util::vecMap(report->pose.translation);
 
-    // Position velocity and acceleration are not currently consistently provided
-    Eigen::Vector3d::Map(pose.vecVelocity) = Eigen::Vector3d::Zero();
-    Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d::Zero();
+	// Velocity and acceleration are not provided, so we try to make up something based on the 125hz refresh rate of the hydra + make it a little less jumpy
+	if (self->last_pose_.poseIsValid) {
+		float permanent_acceleration_ratio = 0.1;
+
+		float dampening = 0.1;
+		float refresh = 125;
+		float minimum = 0.1;
+
+		double xvel = abs(self->pose_.vecPosition[0] - self->last_pose_.vecPosition[0]) * refresh * dampening;
+		if (xvel < minimum) xvel = 0;
+		double yvel = abs(self->pose_.vecPosition[1] - self->last_pose_.vecPosition[1]) * refresh * dampening;
+		if (yvel < minimum) yvel = 0;
+		double zvel = abs(self->pose_.vecPosition[2] - self->last_pose_.vecPosition[2]) * refresh * dampening;
+		if (zvel < minimum) zvel = 0;
+
+		Eigen::Vector3d::Map(pose.vecVelocity) = Eigen::Vector3d(xvel, yvel, zvel);
+		Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d(xvel * permanent_acceleration_ratio, yvel * permanent_acceleration_ratio, zvel * permanent_acceleration_ratio);
+	}
+	else {
+		Eigen::Vector3d::Map(pose.vecVelocity) = Eigen::Vector3d::Zero();
+		Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d::Zero();
+	}
 
     // Orientation
     map(pose.qRotation) = osvr::util::fromQuat(report->pose.rotation);

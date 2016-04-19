@@ -191,7 +191,8 @@ private:
 	osvr::clientkit::Interface m_AnalogInterfaceTrigger;
 
 	vr::DriverPose_t pose_;
-    vr::ETrackedDeviceClass deviceClass_;
+	vr::DriverPose_t last_pose_;
+	vr::ETrackedDeviceClass deviceClass_;
 	vr::VRControllerState_t state_;
 	vr::IVRSettings *settings_;
 
